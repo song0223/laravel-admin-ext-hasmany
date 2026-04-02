@@ -6,7 +6,7 @@
 
         @include('admin::form.error')
 
-        <input type="file" class="{{$class}}" name="{{$name}}[]" {!! $attributes !!} />
+        <input type="file" id="{{$id}}" class="{{$class}}" name="{{$name}}[]" {!! $attributes !!} />
         <input type="hidden" id="{{$sort_input_id}}" name="{{ $sort_input_name }}" value="" />
 
         @include('admin::form.help-block')

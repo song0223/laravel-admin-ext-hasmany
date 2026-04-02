@@ -2,8 +2,9 @@
 
 namespace Encore\HasmanyExtra\Fields;
 
-use Encore\Admin\Admin;
 use Encore\Admin\Form\Field;
+use Encore\HasmanyExtra\Support\TableBuilder;
+use Closure;
 use Illuminate\Support\Arr;
 
 class JsonTable extends Field
@@ -17,6 +18,24 @@ class JsonTable extends Field
      * @var array
      */
     protected $columnDefinitions = [];
+
+    /**
+     * @param string $column
+     * @param array $arguments
+     */
+    public function __construct($column, $arguments = [])
+    {
+        parent::__construct($column, $arguments);
+
+        if (count($arguments) === 1 && $arguments[0] instanceof Closure) {
+            $this->buildColumns($arguments[0]);
+        }
+
+        if (count($arguments) === 2 && $arguments[1] instanceof Closure) {
+            $this->label = $arguments[0];
+            $this->buildColumns($arguments[1]);
+        }
+    }
 
     /**
      * @return string
@@ -37,6 +56,54 @@ class JsonTable extends Field
         $this->columnDefinitions = $definitions;
 
         return $this;
+    }
+
+    /**
+     * @param Closure $builder
+     * @return void
+     */
+    protected function buildColumns(Closure $builder)
+    {
+        $table = new TableBuilder();
+        $builder($table);
+        $this->columnDefinitions = $table->columns();
+    }
+
+    /**
+     * @param mixed $value
+     * @return array
+     */
+    public static function parseRows($value)
+    {
+        if ($value instanceof \JsonSerializable) {
+            $value = $value->jsonSerialize();
+        }
+
+        if ($value instanceof \Illuminate\Contracts\Support\Arrayable) {
+            $value = $value->toArray();
+        }
+
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            $value = is_array($decoded) ? $decoded : [];
+        }
+
+        if (!is_array($value) || empty($value)) {
+            return [];
+        }
+
+        if (Arr::isAssoc($value)) {
+            $value = [$value];
+        }
+
+        return array_values(array_filter(array_map(function ($row) {
+            if (is_string($row)) {
+                $decoded = json_decode($row, true);
+                $row = is_array($decoded) ? $decoded : [];
+            }
+
+            return is_array($row) ? $row : [];
+        }, $value)));
     }
 
     /**
@@ -91,39 +158,17 @@ class JsonTable extends Field
     {
         $old = old($this->inputPath());
         $value = $old !== null ? $old : $this->value;
+        $rows = static::parseRows($value);
 
-        if (is_string($value)) {
-            $value = json_decode($value, true);
-        }
-
-        if ($value instanceof \JsonSerializable) {
-            $value = $value->jsonSerialize();
-        }
-
-        if ($value instanceof \Illuminate\Contracts\Support\Arrayable) {
-            $value = $value->toArray();
-        }
-
-        if (is_array($value) && Arr::isAssoc($value)) {
-            $hasDefinedColumns = count(array_intersect(array_keys($value), array_keys($this->columnDefinitions ?: $this->getDefaultColumns()))) > 0;
-
-            if ($hasDefinedColumns) {
-                $value = [$value];
-            }
-        }
-
-        if (!is_array($value) || empty($value)) {
+        if (empty($rows)) {
             return [];
         }
 
-        return array_values(array_map(function ($row) {
-            if (is_string($row)) {
-                $decoded = json_decode($row, true);
-                $row = is_array($decoded) ? $decoded : [];
-            }
+        if (Arr::isAssoc($rows) && count(array_intersect(array_keys($rows), array_keys($this->columnDefinitions ?: $this->getDefaultColumns()))) > 0) {
+            return [$rows];
+        }
 
-            return is_array($row) ? $row : [];
-        }, $value));
+        return $rows;
     }
 
     /**
@@ -154,47 +199,58 @@ class JsonTable extends Field
             'table_id' => 'json-table-'.$this->domKey(),
         ]);
 
-        $domKey = $this->domKey();
-        $script = <<<EOT
+        $this->script = <<<'EOT'
 (function () {
-    var wrapper = document.getElementById('json-table-{$domKey}');
-    if (!wrapper) {
+    if (window.hasmanyExtraJsonTableBooted) {
         return;
     }
 
-    var tbody = wrapper.querySelector('tbody');
-    var addButton = wrapper.querySelector('.json-table-add');
-    var template = wrapper.querySelector('template');
+    window.hasmanyExtraJsonTableBooted = true;
 
-    if (!tbody || !addButton || !template) {
-        return;
-    }
+    $(document).off('click.hasmanyExtraJsonTableAdd', '.json-table-field .json-table-add');
+    $(document).on('click.hasmanyExtraJsonTableAdd', '.json-table-field .json-table-add', function () {
+        var wrapper = $(this).closest('.json-table-field')[0];
 
-    addButton.addEventListener('click', function () {
+        if (!wrapper) {
+            return;
+        }
+
+        var tbody = wrapper.querySelector('tbody');
+        var template = wrapper.querySelector('template');
+
+        if (!tbody || !template) {
+            return;
+        }
+
         var index = tbody.querySelectorAll('tr').length;
         var html = template.innerHTML.replace(/__INDEX__/g, index);
         tbody.insertAdjacentHTML('beforeend', html);
     });
 
-    wrapper.addEventListener('click', function (event) {
-        if (!event.target.classList.contains('json-table-remove')) {
+    $(document).off('click.hasmanyExtraJsonTableRemove', '.json-table-field .json-table-remove');
+    $(document).on('click.hasmanyExtraJsonTableRemove', '.json-table-field .json-table-remove', function () {
+        var wrapper = $(this).closest('.json-table-field')[0];
+
+        if (!wrapper) {
             return;
         }
 
-        var rows = tbody.querySelectorAll('tr');
+        var tbody = wrapper.querySelector('tbody');
+        var rows = tbody ? tbody.querySelectorAll('tr') : [];
+
         if (rows.length <= 1) {
-            rows[0].querySelectorAll('input, textarea').forEach(function (el) {
-                el.value = '';
-            });
+            if (rows.length) {
+                rows[0].querySelectorAll('input, textarea').forEach(function (el) {
+                    el.value = '';
+                });
+            }
             return;
         }
 
-        event.target.closest('tr').remove();
+        $(this).closest('tr').remove();
     });
 })();
 EOT;
-
-        Admin::script($script);
 
         return parent::render();
     }

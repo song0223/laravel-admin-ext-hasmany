@@ -4,6 +4,7 @@ namespace Encore\HasmanyExtra\Form;
 
 use Encore\Admin\Form;
 use Encore\Admin\Form\Field;
+use Encore\HasmanyExtra\Fields\JsonTable;
 use Illuminate\Support\Arr;
 
 class NestedForm extends \Encore\Admin\Form\NestedForm
@@ -15,6 +16,25 @@ class NestedForm extends \Encore\Admin\Form\NestedForm
      */
     public function __call($method, $arguments)
     {
+        if ($method === 'table') {
+            $column = Arr::get($arguments, 0, '');
+
+            /** @var Field $field */
+            $field = new JsonTable($column, array_slice($arguments, 1));
+
+            $field->setForm($this->form);
+
+            if (method_exists($field, 'setNestedForm')) {
+                $field->setNestedForm($this);
+            }
+
+            $field = $this->formatField($field);
+
+            $this->pushField($field);
+
+            return $field;
+        }
+
         if ($className = Form::findFieldClass($method)) {
             $column = Arr::get($arguments, 0, '');
 

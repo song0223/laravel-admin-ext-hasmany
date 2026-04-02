@@ -5,12 +5,13 @@ hasmany-extra
 
 - `hasMany` 里的多图上传、排序、删除
 - `hasMany/NestedForm` 里的原生链式 `->when(...)` 条件显示
+- `hasMany/NestedForm` 里的 `table(...)` JSON 表格兼容
 - 以及手动辅助类 `NestedFormWhen`
 
 ## 安装
 
 ```bash
-composer require laravel-admin-ext/hasmany-extra
+composer require bacao/laravel-admin-hasmany-extra
 ```
 
 ## 字段注册
@@ -27,19 +28,16 @@ $form->hasmanyExtraMultipleImage('banner', 'Banner');
 \Encore\Admin\Form::extend('hasmanyMultipleImage', \Encore\HasmanyExtra\Fields\HasManyMultipleImage::class);
 ```
 
-## 排序同步
+## 多图上传
 
-控制器里引入 trait：
-
-```php
-use Encore\HasmanyExtra\Concerns\HandlesHasManyMultipleImage;
-```
-
-在 `saved` 事件里同步：
+多图上传的值解析、旧图排序同步、单张删除都已经内置：
 
 ```php
-$form->saved(function (Form $form) {
-    $this->syncHasManyMultipleImageOrder('items', GoodsItem::class, 'goods_id', $form->model()->id);
+$form->hasMany('items', '商品项目', function (Form\NestedForm $form) {
+    $form->hasmanyMultipleImage('banner', 'Banner图')
+        ->uniqueName()
+        ->removable()
+        ->sortable();
 });
 ```
 
@@ -60,22 +58,17 @@ $form->hasMany('items', '商品项目', function (Form\NestedForm $form) {
 });
 ```
 
-如果你想手动控制，也可以继续用辅助类：
+## hasMany 里的 table
+
+在 `NestedForm` 里可以继续按接近 laravel-admin 原生的写法使用(目前只支持text和textarea)：
 
 ```php
-use Encore\HasmanyExtra\NestedFormWhen;
-
-$type = $form->radio('type', '类型')->options([
-    1 => '厨师介绍',
-    2 => '餐品介绍',
-    3 => '菜单介绍',
-    4 => '酒店介绍',
-]);
-
-NestedFormWhen::make($form, $type)
-    ->when(3, function (Form\NestedForm $form) {
-        $form->textarea('menu', '菜单');
+$form->hasMany('items', '商品项目', function (Form\NestedForm $form) {
+    $form->table('menu', '子菜单', function ($table) {
+        $table->text('name', '名称');
+        $table->textarea('desc', '描述');
     });
+});
 ```
 
 ## 删除接口

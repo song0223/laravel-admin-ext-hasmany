@@ -3,6 +3,7 @@
 namespace Encore\HasmanyExtra\Fields;
 
 use Encore\Admin\Form\Field\MultipleImage;
+use Illuminate\Support\Arr;
 
 class HasManyMultipleImage extends MultipleImage
 {
@@ -17,6 +18,28 @@ class HasManyMultipleImage extends MultipleImage
      * @var array
      */
     protected $rules = [];
+
+    /**
+     * @param mixed $data
+     * @return void
+     */
+    public function fill($data)
+    {
+        parent::fill($data);
+
+        $this->value = static::parseValue($this->value);
+    }
+
+    /**
+     * @param array $data
+     * @return void
+     */
+    public function setOriginal($data)
+    {
+        parent::setOriginal($data);
+
+        $this->original = static::parseValue($this->original);
+    }
 
     /**
      * @return string
@@ -218,6 +241,103 @@ EOT;
     }
 
     /**
+     * @param mixed $value
+     * @return array
+     */
+    public static function parseValue($value)
+    {
+        if (empty($value)) {
+            return [];
+        }
+
+        if (is_array($value)) {
+            $images = $value;
+        } else {
+            $decoded = json_decode($value, true);
+            $images = is_array($decoded) ? $decoded : array_filter(explode(',', (string) $value));
+        }
+
+        return array_values(array_filter($images, function ($image) {
+            return !empty($image) && !is_array($image);
+        }));
+    }
+
+    /**
+     * @param array $images
+     * @param mixed $order
+     * @return array
+     */
+    public static function sortByOrder(array $images, $order)
+    {
+        if (empty($images) || empty($order)) {
+            return array_values($images);
+        }
+
+        if (is_string($order)) {
+            $decoded = json_decode($order, true);
+            $order = is_array($decoded) ? $decoded : explode(',', $order);
+        }
+
+        if (!is_array($order) || empty($order)) {
+            return array_values($images);
+        }
+
+        $indexed = array_values($images);
+        $sorted = [];
+        $usedIndexes = [];
+
+        foreach ($order as $key) {
+            $index = static::normalizeStaticOrderKey($key);
+
+            if (!array_key_exists($index, $indexed)) {
+                continue;
+            }
+
+            $sorted[] = $indexed[$index];
+            $usedIndexes[$index] = true;
+        }
+
+        foreach ($indexed as $index => $image) {
+            if (isset($usedIndexes[$index])) {
+                continue;
+            }
+
+            $sorted[] = $image;
+        }
+
+        return array_values($sorted);
+    }
+
+    /**
+     * @param array $prepared
+     * @param array $record
+     * @param mixed $original
+     * @param string $column
+     * @param string|null $orderKey
+     * @return array
+     */
+    public static function applyPreparedOrder(array $prepared, array $record, $original, $column, $orderKey = null)
+    {
+        $orderKey = $orderKey ?: $column.'__order';
+
+        if (!Arr::has($record, $orderKey)) {
+            return $prepared;
+        }
+
+        $existing = Arr::has($prepared, $column)
+            ? static::parseValue(Arr::get($prepared, $column))
+            : static::parseValue($original);
+
+        if (empty($existing)) {
+            return $prepared;
+        }
+
+        Arr::set($prepared, $column, static::sortByOrder($existing, Arr::get($record, $orderKey)));
+
+        return $prepared;
+    }
+
+    /**
      * @return array
      */
     protected function sortOriginalFiles()
@@ -250,16 +370,7 @@ EOT;
      */
     protected function normalizeOriginalFiles($original)
     {
-        if (empty($original)) {
-            return [];
-        }
-
-        if (is_string($original)) {
-            $decoded = json_decode($original, true);
-            $original = is_array($decoded) ? $decoded : array_filter(explode(',', $original));
-        }
-
-        return array_values(array_filter((array) $original));
+        return static::parseValue($original);
     }
 
     /**
@@ -282,6 +393,15 @@ EOT;
      * @return int
      */
     protected function normalizeOrderKey($key)
+    {
+        return static::normalizeStaticOrderKey($key);
+    }
+
+    /**
+     * @param mixed $key
+     * @return int
+     */
+    protected static function normalizeStaticOrderKey($key)
     {
         $key = (string) $key;
 
@@ -315,6 +435,9 @@ EOT;
      */
     public function render()
     {
+        $this->addElementClass('hasmany-multiple-image-'.$this->domKey());
+        $this->id = 'hasmany-multiple-image-'.$this->domKey();
+
         $this->options($this->options);
 
         $this->addVariables([
