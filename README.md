@@ -6,7 +6,6 @@ hasmany-extra
 - `hasMany` 里的多图上传、排序、删除
 - `hasMany/NestedForm` 里的原生链式 `->when(...)` 条件显示
 - `hasMany/NestedForm` 里的 `table(...)` JSON 表格兼容
-- 以及手动辅助类 `NestedFormWhen`
 
 ## 安装
 
