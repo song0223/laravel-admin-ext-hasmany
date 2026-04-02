@@ -1,0 +1,30 @@
+{
+    "name": "laravel-admin-ext/hasmany-extra",
+    "description": "Laravel-admin helpers for hasMany multiple image upload and nested conditional fields.",
+    "type": "library",
+    "keywords": ["laravel-admin", "extension", "hasmany", "multiple-image", "nested-form"],
+    "homepage": "https://github.com/laravel-admin-ext/hasmany-extra",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Codex",
+            "email": "noreply@example.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.2.5",
+        "encore/laravel-admin": "^1.8"
+    },
+    "autoload": {
+        "psr-4": {
+            "Encore\\HasmanyExtra\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Encore\\HasmanyExtra\\HasmanyExtraServiceProvider"
+            ]
+        }
+    }
+}
