@@ -106,7 +106,7 @@ trait HandlesHasManyMultipleImage
      * @param string $requestKey
      * @param string $relatedModelClass
      * @param string $foreignKey
-     * @param int $parentId
+     * @param mixed $parentId
      * @param string $column
      * @param string $orderKey
      * @return void
@@ -154,7 +154,7 @@ trait HandlesHasManyMultipleImage
 
     /**
      * @param string $relatedModelClass
-     * @param int $itemId
+     * @param mixed $itemId
      * @param mixed $deleteKey
      * @param string $column
      * @return bool

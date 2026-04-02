@@ -17,7 +17,7 @@ class HasManyMultipleImageController extends Controller
      */
     public function delete(Request $request)
     {
-        $itemId = (int) $request->input('item_id');
+        $itemId = $request->input('item_id');
         $modelClass = $request->input('model');
         $column = $request->input('column', 'banner');
         $deleteKey = $request->input(Field::FILE_DELETE_FLAG);

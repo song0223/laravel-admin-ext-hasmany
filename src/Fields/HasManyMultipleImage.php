@@ -91,7 +91,7 @@ class HasManyMultipleImage extends MultipleImage
     }
 
     /**
-     * @return int|null
+     * @return string|null
      */
     protected function relatedItemId()
     {
@@ -101,7 +101,13 @@ class HasManyMultipleImage extends MultipleImage
             return null;
         }
 
-        return ctype_digit($matches[1]) ? (int) $matches[1] : null;
+        $key = (string) $matches[1];
+
+        if ($key === '' || strpos($key, 'new_') === 0) {
+            return null;
+        }
+
+        return $key;
     }
 
     /**
