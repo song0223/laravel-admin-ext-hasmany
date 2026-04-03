@@ -80,4 +80,15 @@ class Radio extends \Encore\Admin\Form\Field\Radio
 
         return (new \ReflectionMethod(\Encore\Admin\Form\Field::class, 'render'))->invoke($this);
     }
+
+    /**
+     * Keep laravel-admin native cascade behavior working for normal forms,
+     * while this subclass adds nested-form support.
+     *
+     * @return string
+     */
+    protected function getFormFrontValue()
+    {
+        return 'var checked = $(this).val();';
+    }
 }
