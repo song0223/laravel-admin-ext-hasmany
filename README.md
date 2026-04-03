@@ -33,7 +33,7 @@ $form->hasmanyExtraMultipleImage('banner', 'Banner');
 
 ```php
 $form->hasMany('items', '商品项目', function (Form\NestedForm $form) {
-    $form->hasmanyMultipleImage('banner', 'Banner图')
+    $form->hasmanyExtraMultipleImage('banner', 'Banner图')
         ->uniqueName()
         ->removable()
         ->sortable();
